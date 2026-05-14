@@ -22,7 +22,7 @@ Constraints (from Gemini CLI's subagent model):
 - Do not let one persona delegate to another — keep the fan-out flat.
 - For richer multi-agent collaboration where teammates talk to each other instead of just reporting back, see `references/orchestration-patterns.md`.
 
-**Persona resolution.** If you've defined your own `code-reviewer`, `security-auditor`, or `test-engineer` in `.gemini/agents/` or `~/.gemini/agents/`, those take precedence over this plugin's versions — `/ship` picks up your customizations automatically. This is intentional: plugin subagents sit at the bottom of Gemini CLI's scope priority table, so user-level definitions win by design.
+**Persona resolution.** If you've defined your own `code-reviewer`, `security-auditor`, or `test-engineer` in `.gemini/agents/` or `~/.gemini/agents/`, those take precedence over this repository's versions — `/ship` picks up your customizations automatically. This is intentional: repository-provided personas are defaults, and user-level definitions should win by design.
 
 ## Phase B — Merge in main context
 

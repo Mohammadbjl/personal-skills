@@ -23,7 +23,7 @@ Structure context from most persistent to most transient:
 
 ```
 ┌─────────────────────────────────────┐
-│  1. Rules Files (CLAUDE.md, etc.)   │ ← Always loaded, project-wide
+│  1. Rules Files (AGENTS.md, etc.)   │ ← Always loaded, project-wide
 ├─────────────────────────────────────┤
 │  2. Spec / Architecture Docs        │ ← Loaded per feature/session
 ├─────────────────────────────────────┤
@@ -39,9 +39,15 @@ Structure context from most persistent to most transient:
 
 Create a rules file that persists across sessions. This is the highest-leverage context you can provide.
 
-**CLAUDE.md** (for Claude Code):
+**Example `AGENTS.md` / project rules file:**
 ```markdown
 # Project: [Name]
+
+## Supported Agent Tools
+- Gemini CLI
+- Cline
+- Antigravity
+- Codex
 
 ## Tech Stack
 - React 18, TypeScript 5, Vite, Tailwind CSS 4
@@ -57,7 +63,7 @@ Create a rules file that persists across sessions. This is the highest-leverage 
 ## Code Conventions
 - Functional components with hooks (no class components)
 - Named exports (no default exports)
-- colocate tests next to source: `Button.tsx` → `Button.test.tsx`
+- Colocate tests next to source: `Button.tsx` → `Button.test.tsx`
 - Use `cn()` utility for conditional classNames
 - Error boundaries at route level
 
@@ -71,11 +77,10 @@ Create a rules file that persists across sessions. This is the highest-leverage 
 [One short example of a well-written component in your style]
 ```
 
-**Equivalent files for other tools:**
-- `.cursorrules` or `.cursor/rules/*.md` (Cursor)
-- `.windsurfrules` (Windsurf)
-- `.github/copilot-instructions.md` (GitHub Copilot)
-- `AGENTS.md` (OpenAI Codex)
+**Target-tool rules files:**
+- `GEMINI.md` for Gemini CLI always-on memory
+- Cline project rules, such as `.clinerules` or workspace rule settings
+- `AGENTS.md` for Antigravity and Codex
 
 ### Level 2: Specs and Architecture
 

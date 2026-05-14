@@ -1,7 +1,7 @@
 #!/bin/bash
-# sdd-cache-post.sh — PostToolUse hook for WebFetch.
+# sdd-cache-post.sh — post-fetch cache helper for compatible agent hook payloads.
 #
-# After WebFetch, stores the response body in .claude/sdd-cache/<sha>.json
+# After a fetch, stores the response body in .agent-skills/sdd-cache/<sha>.json
 # with the current ETag / Last-Modified captured via a HEAD request so the
 # pre hook can revalidate on the next fetch.
 #
@@ -20,9 +20,9 @@ command -v shasum >/dev/null 2>&1 || command -v sha256sum >/dev/null 2>&1 || exi
 if [ -t 0 ]; then INPUT="{}"; else INPUT=$(cat); fi
 
 # Debug logging: active when SDD_CACHE_DEBUG=1 is set, or when a sentinel
-# file exists at .claude/sdd-cache/.debug. Toggle with `touch` / `rm`.
+# file exists at .agent-skills/sdd-cache/.debug. Toggle with `touch` / `rm`.
 dbg() {
-  local dir="${CLAUDE_PROJECT_DIR:-$PWD}/.claude/sdd-cache"
+  local dir="${AGENT_SKILLS_PROJECT_DIR:-$PWD}/.agent-skills/sdd-cache"
   [ "${SDD_CACHE_DEBUG:-0}" = "1" ] || [ -f "$dir/.debug" ] || return 0
   mkdir -p "$dir"
   printf '%s [post] %s\n' "$(date -u +%FT%TZ)" "$*" >> "$dir/.debug.log"
@@ -34,11 +34,9 @@ PROMPT=$(printf '%s' "$INPUT" | jq -r '.tool_input.prompt // empty' 2>/dev/null 
 if [ -z "$URL" ]; then dbg "no url in tool_input, exit"; exit 0; fi
 dbg "url=$URL prompt=$(printf '%s' "$PROMPT" | head -c 80)"
 
-# WebFetch tool_response shape (Claude Code as of 2026-04): an object with
-# keys bytes, code, codeText, durationMs, result, url — content lives at
-# .result. The other keys (.output / .text / .content / .body) are kept as
-# defensive fallbacks in case the shape changes; jq returns empty if none
-# match. The string branch handles older/custom integrations.
+# Expected tool_response shape: either a string body or an object with a
+# body-like field. The result/output/text/content/body fallbacks keep this
+# helper usable across compatible target-tool wrappers.
 TOOL_RESPONSE_TYPE=$(printf '%s' "$INPUT" | jq -r '.tool_response | type' 2>/dev/null || echo "unknown")
 dbg "tool_response type=$TOOL_RESPONSE_TYPE keys=$(printf '%s' "$INPUT" | jq -r 'try (.tool_response | keys | join(",")) catch "n/a"' 2>/dev/null)"
 
@@ -72,7 +70,7 @@ hash_key() {
   fi
 }
 
-CACHE_DIR="${CLAUDE_PROJECT_DIR:-$PWD}/.claude/sdd-cache"
+CACHE_DIR="${AGENT_SKILLS_PROJECT_DIR:-$PWD}/.agent-skills/sdd-cache"
 mkdir -p "$CACHE_DIR"
 CACHE_FILE="$CACHE_DIR/$(hash_key "$URL").json"
 

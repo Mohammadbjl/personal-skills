@@ -1,0 +1,55 @@
+name: Validate Agent Skills
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  validate:
+    name: Validate supported-tool scope and skill structure
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Validate required setup guides
+        run: |
+          test -f docs/getting-started.md
+          test -f docs/gemini-cli-setup.md
+          test -f docs/cline-setup.md
+          test -f docs/antigravity-setup.md
+          test -f docs/codex-setup.md
+          test ! -f docs/opencode-setup.md
+          test ! -f docs/windsurf-setup.md
+
+      - name: Validate skill files
+        run: |
+          count="$(find skills -mindepth 2 -maxdepth 2 -name SKILL.md | wc -l | tr -d ' ')"
+          test "$count" -gt 0
+          find skills -mindepth 1 -maxdepth 1 -type d | while read -r dir; do
+            test -f "$dir/SKILL.md"
+            grep -q '^---$' "$dir/SKILL.md"
+            grep -q '^name:' "$dir/SKILL.md"
+            grep -q '^description:' "$dir/SKILL.md"
+          done
+
+      - name: Validate Gemini integration files
+        run: |
+          test -d .gemini/commands
+          test -f .gemini/commands/spec.toml
+          test -f .gemini/commands/planning.toml
+          test -f .gemini/commands/build.toml
+          test -f .gemini/commands/test.toml
+          test -f .gemini/commands/review.toml
+          test -f .gemini/commands/code-simplify.toml
+          test -f .gemini/commands/ship.toml
+          test -f .gemini/agents/code-reviewer.md
+          test -f .gemini/agents/security-auditor.md
+          test -f .gemini/agents/test-engineer.md
+
+      - name: Check unsupported platform references
+        run: |
+          ! grep -RInE 'Claude Code|claude\.ai|\.claude|CLAUDE_|OpenCode|Windsurf|Cursor|Copilot|claude plugin|@anthropic-ai/claude-code' . \
+            --exclude-dir=.git \
+            --exclude-dir=.agent-skills \
+            --exclude=validate-agent-skills.yml

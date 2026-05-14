@@ -1,10 +1,10 @@
-# simplify-ignore hook
+# simplify-ignore helper script
 
-Block-level protection for `/code-simplify`. Mark code that should never be simplified — the model won't see it.
+Block-level protection for simplification workflows. Mark code that should not be simplified; compatible wrappers can hide those blocks from the model while preserving them on disk through a backup/restore cycle.
 
-## Setup
+These helpers are **standalone scripts**. They are not tied to any unsupported agent platform. To use them, your target-tool wrapper must pass compatible JSON payloads to `hooks/simplify-ignore.sh`.
 
-1. Annotate blocks you want to protect:
+## Annotate Protected Blocks
 
 ```js
 /* simplify-ignore-start: perf-critical */
@@ -16,75 +16,81 @@ result[3] = buf[3] ^ key[3];
 /* simplify-ignore-end */
 ```
 
-2. Add hooks to `.claude/settings.json`:
+## Cache Location
+
+Backups are stored in:
+
+```text
+.agent-skills/simplify-ignore-cache/
+```
+
+Override the project root with:
+
+```bash
+AGENT_SKILLS_PROJECT_DIR=/path/to/project
+```
+
+Add `.agent-skills/` to `.gitignore`.
+
+## Payload Contract
+
+The script reads JSON from stdin:
 
 ```json
 {
-  "hooks": {
-    "PreToolUse": [
-      {
-        "matcher": "Read",
-        "hooks": [{ "type": "command", "command": "bash ${CLAUDE_PROJECT_DIR}/hooks/simplify-ignore.sh" }]
-      }
-    ],
-    "PostToolUse": [
-      {
-        "matcher": "Edit|Write",
-        "hooks": [{ "type": "command", "command": "bash ${CLAUDE_PROJECT_DIR}/hooks/simplify-ignore.sh" }]
-      }
-    ],
-    "Stop": [
-      {
-        "hooks": [{ "type": "command", "command": "bash ${CLAUDE_PROJECT_DIR}/hooks/simplify-ignore.sh" }]
-      }
-    ]
+  "tool_name": "Read",
+  "tool_input": {
+    "file_path": "src/example.js"
   }
 }
 ```
 
-3. Run `/code-simplify` — protected blocks become `/* BLOCK_de115a1d: perf-critical */` placeholders. The model reasons about surrounding code without seeing the protected implementation.
+Recognized `tool_name` values:
 
-> **Note:** The hook stores temporary backups in `.claude/.simplify-ignore-cache/`. Make sure this path is in your `.gitignore`.
-
-## How it works
-
-One script, three hook events:
-
-| Event | Action |
+| Tool name | Action |
 |---|---|
-| `PreToolUse Read` | Backs up file, replaces blocks with `BLOCK_<hash>` placeholders in-place |
-| `PostToolUse Edit\|Write` | Expands placeholders back to real code, saves model's changes, re-filters |
-| `Stop` | Restores all files from backup when session ends |
+| `Read` | Back up file, replace protected blocks with placeholders in-place |
+| `Edit` | Expand placeholders, save model changes, re-filter protected blocks |
+| `Write` | Expand placeholders, save model changes, re-filter protected blocks |
+| empty / omitted | Restore all backed-up files; use for session cleanup or crash recovery |
 
-Each block is content-hashed (8 hex chars via `shasum`/`sha1sum`) so the round-trip is unambiguous even if the model duplicates or reorders placeholders. Cache is project-scoped to prevent cross-session interference.
+## How It Works
 
-## Annotation syntax
+Each protected block is content-hashed and replaced with a placeholder such as:
 
-```js
-/* simplify-ignore-start */           // basic — hides the block
-/* simplify-ignore-start: reason */   // with reason — appears in placeholder
-/* simplify-ignore-end */
+```text
+BLOCK_de115a1d: perf-critical
 ```
 
-Any comment style works (`//`, `/*`, `#`, `<!--`). Multiple blocks per file and single-line blocks supported. Placeholders preserve the original comment syntax (e.g. `# BLOCK_xxx` for Python, `<!-- BLOCK_xxx -->` for HTML).
+The original content is stored in `.agent-skills/simplify-ignore-cache/`. When an edit/write payload arrives, the script expands placeholders back to the original code, preserves the model's surrounding changes, and re-filters the file.
 
-## Crash recovery
+## Crash Recovery
 
-If Claude Code crashes without triggering the Stop hook, files on disk may still have `BLOCK_<hash>` placeholders. To restore manually:
+If a session ends without cleanup and files still contain `BLOCK_<hash>` placeholders, restore manually:
 
 ```bash
 echo '{}' | bash hooks/simplify-ignore.sh
 ```
 
-Backups are stored in `.claude/.simplify-ignore-cache/` within your project directory.
+## Annotation Syntax
 
-## Known limitations
+```js
+/* simplify-ignore-start */
+/* simplify-ignore-start: reason */
+/* simplify-ignore-end */
+```
 
-- **Single-line blocks hide the entire line.** If `simplify-ignore-start` and `simplify-ignore-end` appear on the same line as other code, the whole line is hidden from the model, not just the annotated portion. Use dedicated lines for annotations.
-- **Comment suffix detection covers `*/` and `-->` only.** Template engines with non-standard comment closers (ERB `%>`, Blade `--}}`) may produce unbalanced placeholders. Use `#` or `//` style comments instead.
-- **Fallback expansion is progressive, not exact.** If the model alters a placeholder's formatting (e.g. changes the reason text), the hook tries progressively simpler matches: full placeholder → prefix+hash+suffix → hash-only. The hash-only fallback may leave cosmetic debris (e.g. stray `:` or reason text). A warning is printed to stderr when this happens.
-- **File renaming leaves placeholders.** If the model renames or moves a file via a shell command, the new file will retain `BLOCK_<hash>` placeholders. The original code is saved as `<old-filename>.recovered` when the session stops. You must manually restore the recovered code into the new file.
+Any comment style works (`//`, `/*`, `#`, `<!--`). Multiple blocks per file and single-line blocks are supported.
+
+## Known Limitations
+
+- Single-line blocks hide the entire line.
+- Comment suffix detection covers `*/` and `-->` only.
+- If a model alters a placeholder's formatting, the script falls back to progressively looser matches.
+- If a file is renamed or moved by a shell command, the moved file may retain placeholders; restore manually from the recovered backup.
 
 ## Requirements
 
-- `jq`, `shasum` or `sha1sum` (auto-detected), Bash 3.2+
+- `jq`
+- `shasum` or `sha1sum`
+- Bash 3.2+

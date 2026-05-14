@@ -1,15 +1,15 @@
 #!/bin/bash
-# sdd-cache-pre.sh — PreToolUse hook for WebFetch.
+# sdd-cache-pre.sh — pre-fetch cache helper for compatible agent hook payloads.
 #
 # HTTP resource cache keyed by URL. Freshness is delegated to the origin via
 # HTTP validators; 304 Not Modified is the only signal to serve from cache.
-# On hit, exits 2 and writes the cached body to stderr so Claude Code can
-# deliver it to the agent in place of the WebFetch result. Otherwise exits 0.
+# On hit, exits 2 and writes the cached body to stderr so a compatible
+# wrapper can deliver it to the agent in place of a fresh fetch. Otherwise exits 0.
 #
 # No TTL: if validators don't catch a change, nothing will. Entries without
 # ETag or Last-Modified are never cached (can't revalidate).
 #
-# Cached bodies are prompt-shaped (WebFetch post-processes through a model),
+# Cached bodies may be prompt-shaped when a tool post-processes through a model,
 # so the key is URL-only and the original prompt is surfaced in the hit
 # message so the next agent can tell if the earlier reading still applies.
 #
@@ -25,9 +25,9 @@ command -v shasum >/dev/null 2>&1 || command -v sha256sum >/dev/null 2>&1 || exi
 if [ -t 0 ]; then INPUT="{}"; else INPUT=$(cat); fi
 
 # Debug logging: active when SDD_CACHE_DEBUG=1 is set, or when a sentinel
-# file exists at .claude/sdd-cache/.debug. Toggle with `touch` / `rm`.
+# file exists at .agent-skills/sdd-cache/.debug. Toggle with `touch` / `rm`.
 dbg() {
-  local dir="${CLAUDE_PROJECT_DIR:-$PWD}/.claude/sdd-cache"
+  local dir="${AGENT_SKILLS_PROJECT_DIR:-$PWD}/.agent-skills/sdd-cache"
   [ "${SDD_CACHE_DEBUG:-0}" = "1" ] || [ -f "$dir/.debug" ] || return 0
   mkdir -p "$dir"
   printf '%s [pre]  %s\n' "$(date -u +%FT%TZ)" "$*" >> "$dir/.debug.log"
@@ -47,7 +47,7 @@ hash_key() {
   fi
 }
 
-CACHE_DIR="${CLAUDE_PROJECT_DIR:-$PWD}/.claude/sdd-cache"
+CACHE_DIR="${AGENT_SKILLS_PROJECT_DIR:-$PWD}/.agent-skills/sdd-cache"
 CACHE_FILE="$CACHE_DIR/$(hash_key "$URL").json"
 
 if [ ! -f "$CACHE_FILE" ]; then dbg "no cache file at $CACHE_FILE, exit"; exit 0; fi
@@ -75,7 +75,7 @@ STATUS=$(curl -sI -o /dev/null -w "%{http_code}" \
 dbg "revalidation HEAD status=$STATUS"
 
 if [ "$STATUS" != "304" ]; then
-  dbg "not 304, letting WebFetch proceed"
+  dbg "not 304, letting fetch proceed"
   exit 0
 fi
 
@@ -94,9 +94,9 @@ VERIFIED_AT_ISO=$(date -u -r "$FETCHED_AT" +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null \
 {
   printf '[sdd-cache] Cache hit for %s\n\n' "$URL"
   printf 'Revalidated via HTTP 304; unchanged since %s. Use the cached\n' "$VERIFIED_AT_ISO"
-  printf 'content below as if WebFetch had just returned it.\n\n'
+  printf 'content below as if the fetch tool had just returned it.\n\n'
   if [ -n "$ORIGINAL_PROMPT" ]; then
-    printf 'Original WebFetch prompt: "%s". If your angle differs, judge\n' "$ORIGINAL_PROMPT"
+    printf 'Original fetch prompt: "%s". If your angle differs, judge\n' "$ORIGINAL_PROMPT"
     printf 'whether this reading still covers it.\n\n'
   fi
   printf -- '----- BEGIN CACHED CONTENT -----\n'

@@ -1,112 +1,126 @@
 # AGENTS.md
 
-This file provides guidance to AI coding agents (Claude Code, Cursor, Copilot, Antigravity, etc.) when working with code in this repository.
+This repository is maintained for **Gemini CLI, Cline, Antigravity, and Codex**. Treat the repository as a portable collection of agent workflows, personas, commands, and references for those four target tools.
 
 ## Repository Overview
 
-A collection of skills for Claude.ai and Claude Code for senior software engineers. Skills are packaged instructions and scripts that extend Claude and your coding agents capabilities.
+`personal-skills` is a collection of senior-engineering workflows for AI coding agents. The core product is the `skills/` directory: each skill is a Markdown workflow (`SKILL.md`) with triggers, process steps, anti-patterns, and verification criteria.
 
-## OpenCode Integration
+Supported targets:
 
-OpenCode uses a **skill-driven execution model** powered by the `skill` tool and this repository's `/skills` directory.
+| Tool | Primary integration |
+|---|---|
+| Gemini CLI | Native skills from `skills/`, slash commands from `.gemini/commands/`, optional personas from `.gemini/agents/` |
+| Cline | Project rules plus explicit references to `skills/<name>/SKILL.md` and `agents/*.md` |
+| Antigravity | `AGENTS.md` plus on-demand skill/persona loading from this repo |
+| Codex | `AGENTS.md` plus explicit skill/persona prompts; Codex CLI can be used for read-only cross-model review |
+
+Do not add setup flows, CI checks, or documentation for unsupported agent tools unless the user explicitly changes the supported-tool scope.
+
+## Skill-Driven Execution Model
 
 ### Core Rules
 
-- If a task matches a skill, you MUST invoke it
-- Skills are located in `skills/<skill-name>/SKILL.md`
-- Never implement directly if a skill applies
-- Always follow the skill instructions exactly (do not partially apply them)
+- If a task matches a skill, you MUST use it.
+- Skills are located in `skills/<skill-name>/SKILL.md`.
+- Never implement directly if a skill applies.
+- Always follow the selected skill's workflow exactly, including verification.
+- If more than one skill applies, use them in the required lifecycle order.
 
 ### Intent → Skill Mapping
 
-The agent should automatically map user intent to skills:
+Map user intent to skills automatically:
 
-- Feature / new functionality → `spec-driven-development`, then `incremental-implementation`, `test-driven-development`
+- Vague idea / unclear goal → `interview-me`, then `idea-refine`
+- Feature / new functionality → `spec-driven-development`, then `planning-and-task-breakdown`, `incremental-implementation`, and `test-driven-development`
 - Planning / breakdown → `planning-and-task-breakdown`
-- Bug / failure / unexpected behavior → `debugging-and-error-recovery`
+- Bug / failure / unexpected behavior → `debugging-and-error-recovery`, then `test-driven-development`
 - Code review → `code-review-and-quality`
 - Refactoring / simplification → `code-simplification`
 - API or interface design → `api-and-interface-design`
-- UI work → `frontend-ui-engineering`
+- UI work → `frontend-ui-engineering` and, when runtime verification is needed, `browser-testing-with-devtools`
+- Security work → `security-and-hardening`
+- Performance work → `performance-optimization`
+- Documentation / ADRs → `documentation-and-adrs`
+- Release readiness → `shipping-and-launch`
 
-### Lifecycle Mapping (Implicit Commands)
+### Lifecycle Mapping
 
-OpenCode does not support slash commands like `/spec` or `/plan`.
-
-Instead, the agent must internally follow this lifecycle:
+Follow this lifecycle for non-trivial work:
 
 - DEFINE → `spec-driven-development`
 - PLAN → `planning-and-task-breakdown`
 - BUILD → `incremental-implementation` + `test-driven-development`
-- VERIFY → `debugging-and-error-recovery`
+- VERIFY → `debugging-and-error-recovery` when failures occur
 - REVIEW → `code-review-and-quality`
 - SHIP → `shipping-and-launch`
 
-### Execution Model
+Gemini CLI users can invoke matching commands from `.gemini/commands/`. Cline, Antigravity, and Codex users should invoke the same lifecycle through natural-language prompts and explicit references to the relevant `SKILL.md` files.
+
+## Execution Model for Agents
 
 For every request:
 
-1. Determine if any skill applies (even 1% chance)
-2. Invoke the appropriate skill using the `skill` tool
-3. Follow the skill workflow strictly
-4. Only proceed to implementation after required steps (spec, plan, etc.) are complete
+1. Determine if any skill applies, even if the task looks small.
+2. Load/read the relevant `skills/<skill-name>/SKILL.md` file.
+3. Follow the skill workflow strictly.
+4. Establish deliverables, success criteria, and constraints before changing files.
+5. Use tests, builds, or other evidence-based verification before declaring completion.
+6. Keep scope tight; do not perform unrelated cleanup.
 
 ### Anti-Rationalization
 
 The following thoughts are incorrect and must be ignored:
 
-- "This is too small for a skill"
-- "I can just quickly implement this"
-- "I’ll gather context first"
+- "This is too small for a skill."
+- "I can just quickly implement this."
+- "I'll gather context first and decide later."
+- "Verification can wait until the end."
 
 Correct behavior:
 
-- Always check for and use skills first
+- Always check for and use applicable skills first.
+- Gather only the context needed by the selected skill.
+- Verify incrementally.
 
-This ensures OpenCode behaves similarly to Claude Code with full workflow enforcement.
+## Orchestration: Skills, Personas, and Commands
 
-## Orchestration: Personas, Skills, and Commands
+This repo has three composable layers:
 
-This repo has three composable layers. They have different jobs and should not be confused:
+- **Skills** (`skills/<name>/SKILL.md`) — workflows with steps and exit criteria. The *how*.
+- **Personas** (`agents/<role>.md`) — specialist review roles with a perspective and output format. The *who*.
+- **Commands** (`.gemini/commands/*.toml`) — Gemini CLI entry points. The *when* for Gemini users.
 
-- **Skills** (`skills/<name>/SKILL.md`) — workflows with steps and exit criteria. The *how*. Mandatory hops when an intent matches.
-- **Personas** (`agents/<role>.md`) — roles with a perspective and an output format. The *who*.
-- **Slash commands** (`.claude/commands/*.md`) — user-facing entry points. The *when*. The orchestration layer.
+Composition rule: **the user or a command is the orchestrator. Personas do not invoke other personas.** A persona may apply skills, but it must not spawn or delegate to another persona.
 
-Composition rule: **the user (or a slash command) is the orchestrator. Personas do not invoke other personas.** A persona may invoke skills.
+The only multi-persona orchestration pattern this repo endorses is **parallel fan-out with a merge step** — used by `/ship` to run `code-reviewer`, `security-auditor`, and `test-engineer` as independent perspectives and synthesize their reports. If a target tool cannot run subagents in parallel, run the personas explicitly and merge the reports in the main session.
 
-The only multi-persona orchestration pattern this repo endorses is **parallel fan-out with a merge step** — used by `/ship` to run `code-reviewer`, `security-auditor`, and `test-engineer` concurrently and synthesize their reports. Do not build a "router" persona that decides which other persona to call; that's the job of slash commands and intent mapping.
-
-See [agents/README.md](agents/README.md) for the decision matrix and [references/orchestration-patterns.md](references/orchestration-patterns.md) for the full pattern catalog.
-
-**Claude Code interop:** the personas in `agents/` work as Claude Code subagents (auto-discovered from this plugin's `agents/` directory) and as Agent Teams teammates (referenced by name when spawning). Two platform constraints align with our rules: subagents cannot spawn other subagents, and teams cannot nest. Plugin agents silently ignore the `hooks`, `mcpServers`, and `permissionMode` frontmatter fields.
+See `agents/README.md` and `references/orchestration-patterns.md` for details.
 
 ## Creating a New Skill
 
 ### Directory Structure
 
-```
+```text
 skills/
-  {skill-name}/           # kebab-case directory name
+  {skill-name}/
     SKILL.md              # Required: skill definition
-    scripts/              # Required: executable scripts
-      {script-name}.sh    # Bash scripts (preferred)
-  {skill-name}.zip        # Required: packaged for distribution
+    scripts/              # Optional: executable helpers only when needed
+      {script-name}.sh
 ```
 
 ### Naming Conventions
 
-- **Skill directory**: `kebab-case` (e.g. `web-quality`)
-- **SKILL.md**: Always uppercase, always this exact filename
-- **Scripts**: `kebab-case.sh` (e.g., `deploy.sh`, `fetch-logs.sh`)
-- **Zip file**: Must match directory name exactly: `{skill-name}.zip`
+- **Skill directory**: `kebab-case` (for example, `web-quality`)
+- **SKILL.md**: always uppercase, always this exact filename
+- **Scripts**: `kebab-case.sh` (for example, `deploy.sh`, `fetch-logs.sh`)
 
 ### SKILL.md Format
 
 ```markdown
 ---
 name: {skill-name}
-description: {One sentence describing what the skill does, followed by one or more "Use when" trigger conditions. Include trigger phrases like "Deploy my app" or "Check logs" when helpful.}
+description: {One sentence describing what the skill does, followed by one or more "Use when" trigger conditions.}
 ---
 
 # {Skill Title}
@@ -115,75 +129,36 @@ description: {One sentence describing what the skill does, followed by one or mo
 
 ## How It Works
 
-{Numbered list explaining the skill's workflow}
+{Numbered workflow}
 
-Equivalent headings like `Workflow`, `Core Process`, or `When to Use` are fine when they communicate the same structure clearly.
+## Verification
 
-## Usage (Optional)
-
-Include this section only if the skill ships runnable helpers under `scripts/`. Markdown-only skills can omit both the section and the directory entirely.
-
-```bash
-bash /mnt/skills/user/{skill-name}/scripts/{script}.sh [args]
-```
-
-**Arguments:**
-- `arg1` - Description (defaults to X)
-
-**Examples:**
-{Show 2-3 common usage patterns}
-
-## Output
-
-{Show example output users will see}
-
-## Present Results to User
-
-{Template for how Claude should format results when presenting to users}
-
-## Troubleshooting
-
-{Common issues and solutions, especially network/permissions errors}
+- [ ] {Evidence-based exit criterion}
 ```
 
 ### Best Practices for Context Efficiency
 
-Skills are loaded on-demand — only the skill name and description are loaded at startup. The full `SKILL.md` loads into context only when the agent decides the skill is relevant. To minimize context usage:
+Skills are loaded on demand. To keep target tools focused:
 
-- **Keep SKILL.md under 500 lines** — put detailed reference material in separate files
-- **Write specific descriptions** — helps the agent know exactly when to activate the skill
-- **Use progressive disclosure** — reference supporting files that get read only when needed
-- **Prefer scripts over inline code** — script execution doesn't consume context (only output does)
-- **File references work one level deep** — link directly from SKILL.md to supporting files
+- Keep `SKILL.md` concise; put long reference material in separate files.
+- Write specific descriptions so agents know when to activate the skill.
+- Use progressive disclosure: link directly to supporting files that should be loaded only when needed.
+- Prefer scripts for repeatable checks when they save context and reduce manual error.
 
 ### Script Requirements
 
-- Use `#!/bin/bash` shebang
-- Use `set -e` for fail-fast behavior
-- Write status messages to stderr: `echo "Message" >&2`
-- Write machine-readable output (JSON) to stdout
-- Include a cleanup trap for temp files
-- Reference the script path as `/mnt/skills/user/{skill-name}/scripts/{script}.sh`
+- Use `#!/bin/bash` shebang for shell helpers.
+- Use `set -e` or `set -euo pipefail` where appropriate.
+- Write status messages to stderr.
+- Write machine-readable output to stdout when the script is intended for automation.
+- Include cleanup traps for temp files.
+- Avoid target-tool-specific environment variables unless the script is explicitly documented for that tool.
 
-### Creating the Zip Package
+## End-User Setup Targets
 
-After creating or updating a skill:
+Document only these setup paths:
 
-```bash
-cd skills
-zip -r {skill-name}.zip {skill-name}/
-```
-
-### End-User Installation
-
-Document these two installation methods for users:
-
-**Claude Code:**
-```bash
-cp -r skills/{skill-name} ~/.claude/skills/
-```
-
-**claude.ai:**
-Add the skill to project knowledge or paste SKILL.md contents into the conversation.
-
-If the skill requires network access, instruct users to add required domains at `claude.ai/settings/capabilities`.
+- **Gemini CLI:** `docs/gemini-cli-setup.md`
+- **Cline:** `docs/cline-setup.md`
+- **Antigravity:** `docs/antigravity-setup.md`
+- **Codex:** `docs/codex-setup.md`

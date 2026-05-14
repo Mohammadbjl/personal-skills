@@ -1,120 +1,103 @@
 # Agent Personas
 
-Specialist personas that play a single role with a single perspective. Each persona is a Markdown file consumed as a system prompt by your harness (Claude Code, Cursor, Copilot, etc.).
+Specialist personas are role prompts with one perspective and one output format. They are reusable across **Gemini CLI, Cline, Antigravity, and Codex**.
 
 | Persona | Role | Best for |
-|---------|------|----------|
+|---|---|---|
 | [code-reviewer](code-reviewer.md) | Senior Staff Engineer | Five-axis review before merge |
-| [security-auditor](security-auditor.md) | Security Engineer | Vulnerability detection, OWASP-style audit |
-| [test-engineer](test-engineer.md) | QA Engineer | Test strategy, coverage analysis, Prove-It pattern |
+| [security-auditor](security-auditor.md) | Security Engineer | Vulnerability detection and threat modeling |
+| [test-engineer](test-engineer.md) | QA Engineer | Test strategy, coverage analysis, Prove-It tests |
 
-## How personas relate to skills and commands
-
-Three layers, each with a distinct job:
+## How Personas Relate to Skills and Commands
 
 | Layer | What it is | Example | Composition role |
-|-------|-----------|---------|------------------|
-| **Skill** | A workflow with steps and exit criteria | `code-review-and-quality` | The *how* — invoked from inside a persona or command |
-| **Persona** | A role with a perspective and an output format | `code-reviewer` | The *who* — adopts a viewpoint, produces a report |
-| **Command** | A user-facing entry point | `/review`, `/ship` | The *when* — composes personas and skills |
+|---|---|---|---|
+| **Skill** | Workflow with steps and exit criteria | `code-review-and-quality` | The *how* |
+| **Persona** | Role with a perspective and output format | `code-reviewer` | The *who* |
+| **Command** | Gemini CLI entry point or saved prompt | `/review`, `/ship` | The *when* |
 
-The user (or a slash command) is the orchestrator. **Personas do not call other personas.** Skills are mandatory hops inside a persona's workflow.
+The user or a command is the orchestrator. **Personas do not call other personas.** A persona may use a skill, but it must not delegate to another persona.
 
-## When to use each
+## Target Tool Usage
 
-### Direct persona invocation
-Pick this when you want one perspective on the current change and the user is in the loop.
+### Gemini CLI
 
-- "Review this PR" → invoke `code-reviewer` directly
-- "Are there security issues in `auth.ts`?" → invoke `security-auditor` directly
-- "What tests are missing for the checkout flow?" → invoke `test-engineer` directly
+Gemini CLI can use persona definitions from `.gemini/agents/`. This repository keeps source persona files in `agents/` and checked-in Gemini copies in `.gemini/agents/`.
 
-### Slash command (single persona behind it)
-Pick this when there's a repeatable workflow you'd otherwise re-explain every time.
+- `/review` uses the `code-review-and-quality` skill for a single review pass.
+- `/ship` can fan out to `code-reviewer`, `security-auditor`, and `test-engineer`, then merge their reports.
 
-- `/review` → wraps `code-reviewer` with the project's review skill
-- `/test` → wraps `test-engineer` with TDD skill
+If your Gemini CLI version does not support subagents, run each persona prompt explicitly and merge the findings in the main session.
 
-### Slash command (orchestrator — fan-out)
-Pick this only when **independent** investigations can run in parallel and produce reports that a single agent then merges.
+### Cline
 
-- `/ship` → fans out to `code-reviewer` + `security-auditor` + `test-engineer` in parallel, then synthesizes their reports into a go/no-go decision
+Reference a persona directly in the task prompt:
 
-This is the only orchestration pattern this repo endorses. See [references/orchestration-patterns.md](../references/orchestration-patterns.md) for the full pattern catalog and anti-patterns.
-
-## Decision matrix
-
-```
-Is the work a single perspective on a single artifact?
-├── Yes → Direct persona invocation
-└── No  → Are the sub-tasks independent (no shared mutable state, no ordering)?
-         ├── Yes → Slash command with parallel fan-out (e.g. /ship)
-         └── No  → Sequential slash commands run by the user (/spec → /plan → /build → /test → /review)
+```text
+Use agents/security-auditor.md as your persona and audit the current auth changes.
 ```
 
-## Worked example: valid orchestration
+Run multiple personas one at a time unless your environment provides safe parallel execution.
 
-`/ship` is the canonical fan-out orchestrator in this repo:
+### Antigravity
 
+Use `AGENTS.md` for always-on rules and load a persona from `agents/` when a focused perspective is needed:
+
+```text
+Use agents/code-reviewer.md to review this diff and output the standard review template.
 ```
+
+### Codex
+
+Use persona files as explicit role prompts. For external Codex CLI review, prefer read-only execution and pass prompts through stdin.
+
+## When to Use Each Pattern
+
+### Direct Persona Invocation
+
+Use when you need one perspective on one artifact:
+
+- "Review this PR" → `code-reviewer`
+- "Find security issues in `auth.ts`" → `security-auditor`
+- "What tests are missing for checkout?" → `test-engineer`
+
+### Single-Persona Command or Prompt
+
+Use when a repeated workflow wraps one persona or one skill:
+
+- `/review` → structured code review
+- `/test` → TDD / Prove-It workflow
+
+### Parallel Fan-Out With Merge
+
+Use only when independent perspectives can run without shared mutable state:
+
+```text
 /ship
-  ├── (parallel) code-reviewer    → review report
-  ├── (parallel) security-auditor → audit report
-  └── (parallel) test-engineer    → coverage report
-                  ↓
-        merge phase (main agent)
-                  ↓
-        go/no-go decision + rollback plan
+  ├── code-reviewer    → quality report
+  ├── security-auditor → security report
+  └── test-engineer    → coverage report
+          ↓
+       merge in main session
+          ↓
+       go/no-go decision + rollback plan
 ```
 
-Why this works:
-- Each sub-agent operates on the same diff but produces a **different perspective**
-- They have no dependencies on each other → genuine parallelism, real wall-clock savings
-- Each runs in a fresh context window → main session stays uncluttered
-- The merge step is small and benefits from full context, so it stays in the main agent
+This is the only multi-persona orchestration pattern this repo endorses.
 
-## Worked example: invalid orchestration (do not build this)
+## Rules for Personas
 
-A `meta-orchestrator` persona whose job is "decide which other persona to call":
+1. A persona has one role and one output format.
+2. Personas do not invoke other personas.
+3. A persona may apply skills relevant to its own task.
+4. Every persona file ends with a "Composition" block explaining how to invoke it.
+5. If a persona sees the need for another perspective, it recommends that follow-up in its report instead of delegating.
 
-```
-/work-on-pr → meta-orchestrator
-                  ↓ (decides "this needs a review")
-              code-reviewer
-                  ↓ (returns)
-              meta-orchestrator (paraphrases result)
-                  ↓
-              user
-```
+## Adding a Persona
 
-Why this fails:
-- Pure routing layer with no domain value
-- Adds two paraphrasing hops → information loss + 2× token cost
-- The user already knows they want a review; let them call `/review` directly
-- Replicates work that slash commands and `AGENTS.md` intent-mapping already do
-
-## Rules for personas
-
-1. A persona is a single role with a single output format. If you find yourself adding a second role, create a second persona.
-2. **Personas do not invoke other personas.** Composition is the job of slash commands or the user. On Claude Code this is also a hard platform constraint — *"subagents cannot spawn other subagents"* — so the rule is enforced for you.
-3. A persona may invoke skills (the *how*).
-4. Every persona file ends with a "Composition" block stating where it fits.
-
-## Claude Code interop
-
-The personas in this repo are designed to work as Claude Code subagents and as Agent Teams teammates without modification:
-
-- **As subagents:** auto-discovered when this plugin is enabled (no path config needed). Use the Agent tool with `subagent_type: code-reviewer` (or `security-auditor`, `test-engineer`). `/ship` is the canonical example.
-- **As Agent Teams teammates** (experimental, requires `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`): reference the same persona name when spawning a teammate. The persona's body is **appended to** the teammate's system prompt as additional instructions (not a replacement), so your persona text sits on top of the team-coordination instructions the lead installs (SendMessage, task-list tools, etc.).
-
-Subagents only report results back to the main agent. Agent Teams let teammates message each other directly. Use subagents when reports are enough; use Agent Teams when sub-agents need to challenge each other's findings (e.g. competing-hypothesis debugging). See [references/orchestration-patterns.md](../references/orchestration-patterns.md) for the full mapping.
-
-Plugin agents do not support `hooks`, `mcpServers`, or `permissionMode` frontmatter — those fields are silently ignored. Avoid relying on them when authoring new personas here.
-
-## Adding a new persona
-
-1. Create `agents/<role>.md` with the same frontmatter format used by existing personas.
-2. Define the role, scope, output format, and rules.
-3. Add a **Composition** block at the bottom (Invoke directly when / Invoke via / Do not invoke from another persona).
-4. Add the persona to the table at the top of this file.
-5. If the persona enables a new orchestration pattern, document it in `references/orchestration-patterns.md` rather than inventing the pattern in the persona file itself.
+1. Create `agents/<role>.md` using the existing frontmatter format.
+2. Define role, scope, output format, and rules.
+3. Add a **Composition** block.
+4. Add the persona to the table above.
+5. If Gemini CLI should expose it directly, add a matching `.gemini/agents/<role>.md` copy.
+6. If it changes orchestration behavior, update `references/orchestration-patterns.md`.

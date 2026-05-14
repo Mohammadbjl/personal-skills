@@ -1,131 +1,115 @@
-# Using agent-skills with Gemini CLI
+# Using personal-skills with Gemini CLI
+
+Gemini CLI is a first-class target for this repository. Use native Gemini skills for on-demand workflows, `.gemini/commands/` for lifecycle shortcuts, and `.gemini/agents/` for specialist personas.
 
 ## Setup
 
-### Option 1: Install as Skills (Recommended)
+### Option 1: Install as Gemini Skills (Recommended)
 
-Gemini CLI has a native skills system that auto-discovers `SKILL.md` files in `.gemini/skills/` or `.agents/skills/` directories. Each skill activates on demand when it matches your task.
+Gemini CLI can auto-discover `SKILL.md` files installed into Gemini skill locations.
 
-**Install from the repo:**
-
-```bash
-gemini skills install https://github.com/addyosmani/agent-skills.git --path skills
-```
-
-**Or install from a local clone:**
+Install from the repository:
 
 ```bash
-git clone https://github.com/addyosmani/agent-skills.git
-gemini skills install /path/to/agent-skills/skills/
+gemini skills install git@github.com:Mohammadbjl/personal-skills.git --path skills
 ```
 
-**Install for a specific workspace only:**
+Or install from a local clone:
 
 ```bash
-gemini skills install /path/to/agent-skills/skills/ --scope workspace
+git clone git@github.com:Mohammadbjl/personal-skills.git
+cd personal-skills
+gemini skills install ./skills --scope workspace
 ```
 
-Skills installed at workspace scope go into `.gemini/skills/` (or `.agents/skills/`). User-level skills go into `~/.gemini/skills/`.
+Workspace-scoped skills are installed into `.gemini/skills/` or `.agents/skills/` depending on your Gemini CLI version and configuration. User-scoped skills are installed under your Gemini user configuration directory.
 
-Once installed, verify with:
+Verify installation:
 
-```
+```text
 /skills list
 ```
 
-Gemini CLI injects skill names and descriptions into the prompt automatically. When it recognizes a matching task, it asks permission to activate the skill before loading its full instructions.
+### Option 2: Use `GEMINI.md` for Always-On Context
 
-### Option 2: GEMINI.md (Persistent Context)
+For rules you want loaded in every Gemini session, create a focused `GEMINI.md` instead of loading every skill.
 
-For skills you want always loaded as persistent project context (rather than on-demand activation), add them to your project's `GEMINI.md`:
-
-```bash
-# Create GEMINI.md with core skills as persistent context
-cat /path/to/agent-skills/skills/incremental-implementation/SKILL.md > GEMINI.md
-echo -e "\n---\n" >> GEMINI.md
-cat /path/to/agent-skills/skills/code-review-and-quality/SKILL.md >> GEMINI.md
-```
-
-You can also modularize by importing from separate files:
+Example:
 
 ```markdown
-# Project Instructions
+# Project Agent Rules
 
-@skills/test-driven-development/SKILL.md
+Always use skills from this repository when they apply.
+
+Start by reading:
+@skills/using-agent-skills/SKILL.md
+
+For implementation tasks, prefer:
 @skills/incremental-implementation/SKILL.md
+@skills/test-driven-development/SKILL.md
 ```
 
-Use `/memory show` to verify loaded context, and `/memory reload` to refresh after changes.
-
-> **Skills vs GEMINI.md:** Skills are on-demand expertise that activate only when relevant, keeping your context window clean. GEMINI.md provides persistent context loaded for every prompt. Use skills for phase-specific workflows and GEMINI.md for always-on project conventions.
+Use `/memory show` to inspect loaded context and `/memory reload` after changes.
 
 ## Recommended Configuration
 
-### Always-On (GEMINI.md)
+### Always-On
 
-Add these as persistent context for every session:
+Keep always-on context short:
 
-- `incremental-implementation` — Build in small verifiable slices
-- `code-review-and-quality` — Five-axis review
+- `using-agent-skills` — decide which skill applies
+- a short project rules section with commands, conventions, and boundaries
 
-### On-Demand (Skills)
+### On-Demand Skills
 
-Install these as skills so they activate only when relevant:
+Install these as Gemini skills so they activate only when relevant:
 
-- `test-driven-development` — Activates when implementing logic or fixing bugs
-- `spec-driven-development` — Activates when starting a new project or feature
-- `frontend-ui-engineering` — Activates when building UI
-- `security-and-hardening` — Activates during security reviews
-- `performance-optimization` — Activates during performance work
-
-## Advanced Configuration
-
-### MCP Integration
-
-Many skills in this pack leverage [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) tools to interact with the environment. For example:
-
-- `browser-testing-with-devtools` uses the `chrome-devtools` MCP extension.
-- `performance-optimization` can benefit from performance-related MCP tools.
-
-To enable these, ensure you have the relevant MCP extensions installed in your Gemini CLI configuration (`~/.gemini/config.json`).
-
-### Session Hooks
-
-Gemini CLI supports session lifecycle hooks. You can use these to automatically inject context or run validation scripts at the start of a session.
-
-To replicate the `agent-skills` experience from other tools, you can configure a `SessionStart` hook that reminds you of the available skills or loads a meta-skill.
-
-### Explicit Context Loading
-
-You can explicitly load any skill into your current session by referencing it with the `@` symbol in your prompt:
-
-```markdown
-Use the @skills/test-driven-development/SKILL.md skill to implement this fix.
-```
-
-This is useful when you want to ensure a specific workflow is followed without waiting for auto-discovery.
+- `spec-driven-development`
+- `planning-and-task-breakdown`
+- `incremental-implementation`
+- `test-driven-development`
+- `code-review-and-quality`
+- `debugging-and-error-recovery`
+- `shipping-and-launch`
 
 ## Slash Commands
 
-The repo ships 7 slash commands under `.gemini/commands/` that map to the development lifecycle. Gemini CLI auto-discovers them when you run from the project root.
+This repo ships Gemini CLI commands under `.gemini/commands/`:
 
 | Command | What it does |
-|---------|--------------|
+|---|---|
 | `/spec` | Write a structured spec before writing code |
 | `/planning` | Break work into small, verifiable tasks |
-| `/build` | Implement the next task incrementally |
-| `/test` | Run TDD workflow — red, green, refactor |
+| `/build` | Implement the next task incrementally with tests |
+| `/test` | Run TDD / Prove-It workflow |
 | `/review` | Five-axis code review |
 | `/code-simplify` | Reduce complexity without changing behavior |
-| `/ship` | Pre-launch checklist via parallel persona fan-out |
+| `/ship` | Pre-launch checklist with specialist persona fan-out |
 
-Each command invokes the corresponding skill automatically — no manual skill loading required.
+> Use `/planning` instead of `/plan`; `/plan` conflicts with a Gemini CLI command name.
 
-> **Note:** Use `/planning` instead of `/plan` — `/plan` conflicts with a Gemini CLI internal command name.
+## Personas in Gemini CLI
+
+Gemini CLI persona definitions live in `.gemini/agents/`:
+
+- `.gemini/agents/code-reviewer.md`
+- `.gemini/agents/security-auditor.md`
+- `.gemini/agents/test-engineer.md`
+
+The source copies live in `agents/`. Keep both in sync when changing persona behavior.
+
+`/ship` uses the three personas as independent reviewers and then merges their reports into a single launch decision. If your Gemini CLI version does not support subagents, run the persona prompts sequentially and merge the reports in the main session.
+
+## MCP Integration
+
+Some skills can use MCP servers when your Gemini CLI environment supports them. For example, `browser-testing-with-devtools` can use a Chrome DevTools MCP server for runtime browser inspection.
+
+Configure MCP servers through your Gemini CLI configuration, then follow the relevant skill's setup section.
 
 ## Usage Tips
 
-1. **Prefer skills over GEMINI.md** — Skills activate on demand and keep your context window focused. Only put skills in GEMINI.md if you want them always loaded.
-2. **Skill descriptions matter** — Each SKILL.md has a `description` field in its frontmatter that tells agents when to activate it. The descriptions in this repo are optimized for auto-discovery across all supported tools (Claude Code, Gemini CLI, etc.) by clearly stating both *what* the skill does and *when* it should be triggered.
-3. **Use agents for review** — Copy `agents/code-reviewer.md` content when requesting structured code reviews.
-4. **Combine with references** — Reference checklists from `references/` when working on specific quality areas like testing or performance.
+1. Prefer on-demand skills over always-on context.
+2. Keep `GEMINI.md` focused on project conventions and boundaries.
+3. Use `.gemini/commands/` for lifecycle shortcuts.
+4. Use `.gemini/agents/` personas for review, security, and testing perspectives.
+5. Combine skills with `references/` checklists for deeper verification.

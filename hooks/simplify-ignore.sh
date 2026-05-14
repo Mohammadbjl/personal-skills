@@ -1,9 +1,9 @@
 #!/bin/bash
-# simplify-ignore.sh — Hook for Read (PreToolUse), Edit|Write (PostToolUse), Stop
+# simplify-ignore.sh — helper for compatible Read/Edit/Write/Stop hook payloads
 #
-# PreToolUse Read   → backs up file, replaces blocks with BLOCK_<hash> in-place
-# PostToolUse Edit  → expands placeholders, re-filters so file stays hidden
-# PostToolUse Write → expands placeholders, re-filters so file stays hidden
+# Before Read       → backs up file, replaces blocks with BLOCK_<hash> in-place
+# After Edit        → expands placeholders, re-filters so file stays hidden
+# After Write       → expands placeholders, re-filters so file stays hidden
 # Stop              → restores real file content from backup
 #
 # The file on disk ALWAYS has placeholders while the session is active.
@@ -17,7 +17,7 @@ if ! command -v jq >/dev/null 2>&1; then
   printf '%s\n' "error: missing jq" >&2; exit 1
 fi
 
-CACHE="${CLAUDE_PROJECT_DIR:-.}/.claude/.simplify-ignore-cache"
+CACHE="${AGENT_SKILLS_PROJECT_DIR:-.}/.agent-skills/simplify-ignore-cache"
 if [ -t 0 ]; then INPUT="{}"; else INPUT=$(cat); fi
 
 # Parse hook input — trap errors explicitly so set -e doesn't cause
@@ -173,7 +173,7 @@ fi
 
 [ -z "$FILE_PATH" ] && exit 0
 
-# ── PreToolUse Read: filter in-place ──────────────────────────────────────────
+# ── Before Read: filter in-place ───────────────────────────────────────────────
 if [ "$TOOL_NAME" = "Read" ]; then
   [ -f "$FILE_PATH" ] || exit 0
   case "$(basename "$FILE_PATH")" in simplify-ignore*|SIMPLIFY-IGNORE*) exit 0 ;; esac
@@ -215,7 +215,7 @@ if [ "$TOOL_NAME" = "Read" ]; then
   exit 0
 fi
 
-# ── PostToolUse Edit|Write: expand, then re-filter ────────────────────────────
+# ── After Edit|Write: expand, then re-filter ───────────────────────────────────
 if [ "$TOOL_NAME" = "Edit" ] || [ "$TOOL_NAME" = "Write" ]; then
   ID=$(file_id "$FILE_PATH")
   [ -f "$CACHE/${ID}.bak" ] || exit 0
