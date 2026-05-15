@@ -61,17 +61,20 @@ REVIEW  → code-review-and-quality
 SHIP    → shipping-and-launch
 ```
 
+For skill or persona library changes, use `skills/skill-evolution-and-quality/SKILL.md` to compare overlap, apply the quality rubric, and decide whether to create, update, merge, split, reject, or ask for clarification.
+
 ## Personas
 
 Specialist personas live in `agents/`:
 
 - `code-reviewer` — correctness, readability, architecture, security, performance
 - `security-auditor` — vulnerability detection and threat modeling
+- `skill-curator` — skill/persona comparison, quality scoring, and merge/create decisions
 - `test-engineer` — test strategy and coverage analysis
 
 Gemini CLI can use copies in `.gemini/agents/`. Other tools can reference or paste the source persona files directly.
 
 ## Contributing
 
-See [Skill Anatomy](docs/skill-anatomy.md) before adding or changing skills. New docs and automation should preserve the supported-tool scope: Gemini CLI, Cline, Antigravity, and Codex only.
+See [Skill Anatomy](docs/skill-anatomy.md) and `skills/skill-evolution-and-quality/SKILL.md` before adding or changing skills or personas. New docs and automation should preserve the supported-tool scope: Gemini CLI, Cline, Antigravity, and Codex only.
 

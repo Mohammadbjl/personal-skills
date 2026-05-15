@@ -6,6 +6,7 @@ Specialist personas are role prompts with one perspective and one output format.
 |---|---|---|
 | [code-reviewer](code-reviewer.md) | Senior Staff Engineer | Five-axis review before merge |
 | [security-auditor](security-auditor.md) | Security Engineer | Vulnerability detection and threat modeling |
+| [skill-curator](skill-curator.md) | Skill and Persona Curator | Skill/persona comparison, quality scoring, and create/update/merge decisions |
 | [test-engineer](test-engineer.md) | QA Engineer | Test strategy, coverage analysis, Prove-It tests |
 
 ## How Personas Relate to Skills and Commands
@@ -35,6 +36,8 @@ Reference a persona directly in the task prompt:
 
 ```text
 Use agents/security-auditor.md as your persona and audit the current auth changes.
+
+Use agents/skill-curator.md as your persona and compare this proposed skill with existing repository workflows.
 ```
 
 Run multiple personas one at a time unless your environment provides safe parallel execution.
@@ -59,6 +62,7 @@ Use when you need one perspective on one artifact:
 
 - "Review this PR" → `code-reviewer`
 - "Find security issues in `auth.ts`" → `security-auditor`
+- "Should this proposed skill be created or merged?" → `skill-curator`
 - "What tests are missing for checkout?" → `test-engineer`
 
 ### Single-Persona Command or Prompt

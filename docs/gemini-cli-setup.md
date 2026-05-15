@@ -70,6 +70,7 @@ Install these as Gemini skills so they activate only when relevant:
 - `test-driven-development`
 - `code-review-and-quality`
 - `debugging-and-error-recovery`
+- `skill-evolution-and-quality`
 - `shipping-and-launch`
 
 ## Slash Commands
@@ -94,9 +95,10 @@ Gemini CLI persona definitions live in `.gemini/agents/`:
 
 - `.gemini/agents/code-reviewer.md`
 - `.gemini/agents/security-auditor.md`
+- `.gemini/agents/skill-curator.md`
 - `.gemini/agents/test-engineer.md`
 
-The source copies live in `agents/`. Keep both in sync when changing persona behavior.
+The source copies live in `agents/`. Keep both in sync when changing persona behavior. Use `skill-curator` when comparing, adding, improving, merging, or de-duplicating skills and personas.
 
 `/ship` uses the three personas as independent reviewers and then merges their reports into a single launch decision. If your Gemini CLI version does not support subagents, run the persona prompts sequentially and merge the reports in the main session.
 

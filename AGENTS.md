@@ -41,6 +41,7 @@ Map user intent to skills automatically:
 - UI work → `frontend-ui-engineering` and, when runtime verification is needed, `browser-testing-with-devtools`
 - Security work → `security-and-hardening`
 - Performance work → `performance-optimization`
+- Adding, updating, comparing, or merging skills/personas → `skill-evolution-and-quality`; optionally use `skill-curator` for a focused curation report
 - Documentation / ADRs → `documentation-and-adrs`
 - Release readiness → `shipping-and-launch`
 
@@ -98,6 +99,8 @@ The only multi-persona orchestration pattern this repo endorses is **parallel fa
 See `agents/README.md` and `references/orchestration-patterns.md` for details.
 
 ## Creating a New Skill
+
+Before adding or changing a skill or persona, use `skills/skill-evolution-and-quality/SKILL.md` to check for overlap, score quality, and decide whether to create, update, merge, split, reject, or ask for clarification. For a focused reviewer perspective, invoke `agents/skill-curator.md` directly; do not make personas invoke other personas.
 
 ### Directory Structure
 

@@ -50,6 +50,7 @@ Do not load every skill at once. Load the relevant workflow for the current task
 - Implementing? `incremental-implementation` + `test-driven-development`
 - Debugging? `debugging-and-error-recovery`
 - Reviewing? `code-review-and-quality`
+- Adding or improving skills/personas? `skill-evolution-and-quality` and, for a focused report, `skill-curator`
 - Shipping? `shipping-and-launch`
 
 ## Recommended Setup
@@ -81,11 +82,14 @@ The `agents/` directory contains specialist personas:
 | `code-reviewer.md` | Five-axis code review |
 | `test-engineer.md` | Test strategy and coverage analysis |
 | `security-auditor.md` | Vulnerability detection and hardening review |
+| `skill-curator.md` | Skill/persona comparison, quality scoring, and curation decisions |
 
 Use a persona when you need a focused perspective. For example:
 
 ```text
 Use agents/code-reviewer.md as the review persona and review the current diff.
+
+Use agents/skill-curator.md as the curation persona and compare this proposed skill with the existing repository.
 ```
 
 Gemini CLI users can use the copies in `.gemini/agents/` through commands such as `/ship`.

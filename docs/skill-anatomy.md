@@ -116,6 +116,12 @@ If a skill does not need runnable helpers, do not create an empty `scripts/` dir
 5. **Progressive disclosure.** Main SKILL.md is the entry point. Supporting files are loaded only when needed.
 6. **Token-conscious.** Every section must justify its inclusion. If removing it wouldn't change agent behavior, remove it.
 
+## Quality Review
+
+Before adding or changing a skill or persona, use `skills/skill-evolution-and-quality/SKILL.md` as the source of truth for quality review. That workflow defines the rubric for comparing artifacts, finding overlap, deciding create/update/merge/split/reject, and verifying source/Gemini mirror integration.
+
+Do not duplicate the full rubric here; keep this document focused on anatomy and use the curation skill for scoring and decisions.
+
 ## Naming Conventions
 
 - Skill directories: `lowercase-hyphen-separated`
